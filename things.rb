@@ -52,7 +52,9 @@ class Things
     AS
 
     raw = run_applescript(script)
-    parse_todo_rows(raw)
+    todos = parse_todo_rows(raw)
+    # Filter out blank-name todos (e.g., time-block project placeholders)
+    todos.reject { |t| t[:name].nil? || t[:name].strip.empty? }
   end
 
   def get(id)
@@ -495,7 +497,18 @@ class Things
 
   def clean_date(val)
     return nil if val.nil? || val.strip.empty? || val.include?("missing value")
-    val.strip
+    s = val.strip
+    # Convert verbose AppleScript dates like "Thursday, February 26, 2026 at 12:00:00 AM" to ISO 8601
+    begin
+      d = DateTime.parse(s)
+      if d.hour == 0 && d.min == 0 && d.sec == 0
+        d.strftime("%Y-%m-%d")
+      else
+        d.strftime("%Y-%m-%dT%H:%M:%S")
+      end
+    rescue ArgumentError
+      s
+    end
   end
 
   def blank(val)
